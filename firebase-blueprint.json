@@ -1,0 +1,184 @@
+{
+  "entities": {
+    "CustomerProfile": {
+      "title": "CustomerProfile",
+      "description": "Private customer delivery details for the authenticated user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated user UID."
+        },
+        "name": {
+          "type": "string",
+          "description": "Customer full name."
+        },
+        "phone": {
+          "type": "string",
+          "description": "Customer phone number."
+        },
+        "address": {
+          "type": "string",
+          "description": "Customer delivery address."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "name", "phone", "address", "createdAt", "updatedAt"]
+    },
+    "MenuItem": {
+      "title": "MenuItem",
+      "description": "Restaurant menu food item with price in BDT and availability status.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner workspace UID."
+        },
+        "name": {
+          "type": "string",
+          "description": "Food item display name."
+        },
+        "description": {
+          "type": "string",
+          "description": "Short culinary description."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["Burgers", "Pizza", "Drinks", "Sides"],
+          "description": "Menu category."
+        },
+        "price": {
+          "type": "integer",
+          "description": "Unit price in BDT."
+        },
+        "available": {
+          "type": "boolean",
+          "description": "Whether the food item is currently available to order."
+        },
+        "imageKey": {
+          "type": "string",
+          "enum": ["chicken_burger", "pizza", "coke", "custom"],
+          "description": "Bundled visual asset key."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "name", "description", "category", "price", "available", "imageKey", "createdAt", "updatedAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer restaurant order with line items, total, and fulfillment status.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID."
+        },
+        "orderNumber": {
+          "type": "integer",
+          "description": "Sequential order number starting from 1001."
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Customer name at order placement."
+        },
+        "customerPhone": {
+          "type": "string",
+          "description": "Customer phone at order placement."
+        },
+        "customerAddress": {
+          "type": "string",
+          "description": "Delivery address at order placement."
+        },
+        "items": {
+          "type": "array",
+          "description": "Ordered food items list (1 to 30 items)."
+        },
+        "total": {
+          "type": "integer",
+          "description": "Total order cost in BDT."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Pending", "Confirmed", "Preparing", "Ready", "Delivered"],
+          "description": "Order fulfillment status."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "orderNumber", "customerName", "customerPhone", "customerAddress", "items", "total", "status", "createdAt", "updatedAt"]
+    },
+    "CustomerNotification": {
+      "title": "CustomerNotification",
+      "description": "Order confirmation and status update notification for the customer.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Recipient user UID."
+        },
+        "orderNumber": {
+          "type": "integer",
+          "description": "Related order number."
+        },
+        "message": {
+          "type": "string",
+          "description": "Notification message text."
+        },
+        "read": {
+          "type": "boolean",
+          "description": "Whether the customer has read the notification."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "orderNumber", "message", "read", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/customerProfile/{profileId}": {
+      "schema": { "$ref": "#/entities/CustomerProfile" },
+      "description": "Private customer contact and delivery profile."
+    },
+    "/users/{userId}/menuItems/{itemId}": {
+      "schema": { "$ref": "#/entities/MenuItem" },
+      "description": "Restaurant menu items managed and ordered within the user workspace."
+    },
+    "/users/{userId}/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Customer orders with live status progression."
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/CustomerNotification" },
+      "description": "Customer order notifications."
+    }
+  }
+}

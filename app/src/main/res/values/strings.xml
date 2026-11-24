@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Bunchiz</string>
+    <string name="tagline">Freshly Crafted Burgers, Stone-Baked Pizza &amp; Chilled Drinks</string>
+    <string name="sign_in_google">Sign in with Google</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="tab_menu">Menu</string>
+    <string name="tab_orders">Orders</string>
+    <string name="tab_staff">Staff</string>
+    <string name="tab_profile">Profile</string>
+    <string name="notifications_title">Order Alerts</string>
+    <string name="cart_title">Your Bunchiz Cart</string>
+    <string name="cart_empty">Your cart is empty. Add something delicious from the menu.</string>
+    <string name="place_order">Place Order</string>
+    <string name="unavailable">Unavailable</string>
+    <string name="available">Available</string>
+    <string name="currency_symbol">৳</string>
+</resources>

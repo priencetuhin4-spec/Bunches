@@ -1,0 +1,6 @@
+{
+  "name": "Bunchiz",
+  "description": "Restaurant ordering, menu management, order tracking, and customer notifications app.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

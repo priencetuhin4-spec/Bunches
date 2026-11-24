@@ -1,0 +1,174 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default deny all unmatched paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL PRIMITIVES ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- ENTITY VALIDATION HELPERS ---
+    function isValidCustomerProfile(data, userId) {
+      return data.userId == userId &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+             data.phone is string && data.phone.size() >= 3 && data.phone.size() <= 30 &&
+             data.address is string && data.address.size() >= 3 && data.address.size() <= 240 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidMenuItem(data, userId) {
+      return data.userId == userId &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+             data.description is string && data.description.size() <= 240 &&
+             data.category in ['Burgers', 'Pizza', 'Drinks', 'Sides'] &&
+             data.price is int && data.price > 0 && data.price <= 100000 &&
+             data.available is bool &&
+             data.imageKey in ['chicken_burger', 'pizza', 'coke', 'custom'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidOrderStatus(status) {
+      return status in ['Pending', 'Confirmed', 'Preparing', 'Ready', 'Delivered'];
+    }
+
+    function isValidOrderTransition(prevStatus, nextStatus) {
+      return (prevStatus == 'Pending' && nextStatus == 'Confirmed') ||
+             (prevStatus == 'Confirmed' && nextStatus == 'Preparing') ||
+             (prevStatus == 'Preparing' && nextStatus == 'Ready') ||
+             (prevStatus == 'Ready' && nextStatus == 'Delivered');
+    }
+
+    function isValidOrder(data, userId) {
+      return data.userId == userId &&
+             data.orderNumber is int && data.orderNumber >= 1001 && data.orderNumber <= 9999999 &&
+             data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 80 &&
+             data.customerPhone is string && data.customerPhone.size() >= 3 && data.customerPhone.size() <= 30 &&
+             data.customerAddress is string && data.customerAddress.size() >= 3 && data.customerAddress.size() <= 240 &&
+             data.items is list && data.items.size() >= 1 && data.items.size() <= 30 &&
+             data.items[0] is map &&
+             data.total is int && data.total > 0 && data.total <= 10000000 &&
+             isValidOrderStatus(data.status) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidNotification(data, userId) {
+      return data.userId == userId &&
+             data.orderNumber is int && data.orderNumber >= 1001 && data.orderNumber <= 9999999 &&
+             data.message is string && data.message.size() >= 1 && data.message.size() <= 240 &&
+             data.read is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    // --- USER-SCOPED COLLECTIONS ---
+    match /users/{userId} {
+      // Customer Profile (PII isolated to owner)
+      match /customerProfile/{profileId} {
+        allow get: if isOwner(userId) && isValidId(profileId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(profileId) &&
+                         incoming().keys().hasAll(['userId', 'name', 'phone', 'address', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'name', 'phone', 'address', 'createdAt', 'updatedAt']) &&
+                         isValidCustomerProfile(incoming(), userId);
+        allow update: if isOwner(userId) &&
+                         isValidId(profileId) &&
+                         isValidCustomerProfile(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'address', 'updatedAt']);
+        allow delete: if false;
+      }
+
+      // Menu Items
+      match /menuItems/{itemId} {
+        allow get: if isOwner(userId) && isValidId(itemId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(itemId) &&
+                         incoming().keys().hasAll(['userId', 'name', 'description', 'category', 'price', 'available', 'imageKey', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'name', 'description', 'category', 'price', 'available', 'imageKey', 'createdAt', 'updatedAt']) &&
+                         isValidMenuItem(incoming(), userId);
+        allow update: if isOwner(userId) &&
+                         isValidId(itemId) &&
+                         isValidMenuItem(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'category', 'price', 'available', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(itemId);
+      }
+
+      // Orders
+      match /orders/{orderId} {
+        allow get: if isOwner(userId) && isValidId(orderId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(orderId) &&
+                         incoming().keys().hasAll(['userId', 'orderNumber', 'customerName', 'customerPhone', 'customerAddress', 'items', 'total', 'status', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'orderNumber', 'customerName', 'customerPhone', 'customerAddress', 'items', 'total', 'status', 'createdAt', 'updatedAt']) &&
+                         incoming().status == 'Pending' &&
+                         isValidOrder(incoming(), userId);
+        allow update: if isOwner(userId) &&
+                         isValidId(orderId) &&
+                         isValidOrder(incoming(), userId) &&
+                         existing().status != 'Delivered' &&
+                         isValidOrderTransition(existing().status, incoming().status) &&
+                         incoming().userId == existing().userId &&
+                         incoming().orderNumber == existing().orderNumber &&
+                         incoming().customerName == existing().customerName &&
+                         incoming().customerPhone == existing().customerPhone &&
+                         incoming().customerAddress == existing().customerAddress &&
+                         incoming().items == existing().items &&
+                         incoming().total == existing().total &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+        allow delete: if false;
+      }
+
+      // Customer Notifications
+      match /notifications/{notificationId} {
+        allow get: if isOwner(userId) && isValidId(notificationId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(notificationId) &&
+                         incoming().keys().hasAll(['userId', 'orderNumber', 'message', 'read', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'orderNumber', 'message', 'read', 'createdAt']) &&
+                         incoming().read == false &&
+                         isValidNotification(incoming(), userId);
+        allow update: if isOwner(userId) &&
+                         isValidId(notificationId) &&
+                         isValidNotification(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().orderNumber == existing().orderNumber &&
+                         incoming().message == existing().message &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+        allow delete: if isOwner(userId) && isValidId(notificationId);
+      }
+    }
+  }
+}
